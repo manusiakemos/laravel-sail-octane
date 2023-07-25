@@ -43,6 +43,10 @@ sail artisan sail:publish
 command=/usr/bin/php -d variables_order=EGPCS /var/www/html/artisan octane:start --server=swoole --host=0.0.0.0 --port=8000 --watch
 ```
 
+```bash
+sail npm install --save-dev chokidar
+```
+
 **Append** in `docker-compose.yml` file, `ports` section (~Line 13)
 
 I need to map the port `8000` to public
