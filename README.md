@@ -1,66 +1,78 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Sail dengan Laravel Octane
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+https://blog.devgenius.io/laravel-sail-with-https-swoole-ddab7f5303ec
 
-## About Laravel
+```php
+sail up -d
+```
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+```php
+sail composer require laravel/octane
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```php
+sail artisan octane:install
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+**Append/Edit** in `config/octane.php` file
 
-## Learning Laravel
+```php
+'swoole' => [
+        'ssl' => true,
+        'options' => [
+            'ssl_cert_file' => '/etc/swoole/ssl/certs/sail-selfsigned.crt',
+            'ssl_key_file' => '/etc/swoole/ssl/private/sail-selfsigned.key',
+        ]
+    ],
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+**Append** in `.env` file
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+OCTANE_SERVER=swoole
+OCTANE_HTTPS=true
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```php
+sail artisan sail:publish
+```
 
-## Laravel Sponsors
+**update** `docker/8.0/supervisord.conf` (Line 8) as stated in [official documentation](https://laravel.com/docs/8.x/octane#swoole).
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+```php
+command=/usr/bin/php -d variables_order=EGPCS /var/www/html/artisan octane:start --server=swoole --host=0.0.0.0 --port=8000 --watch
+```
 
-### Premium Partners
+**Append** in `docker-compose.yml` file, `ports` section (~Line 13)
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+I need to map the port `8000` to public
 
-## Contributing
+```yaml
+ ports:
+            - '${APP_PORT:-80}:80'
+            - 8000:8000
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+After sail user creation (~Line 47) —  
+`RUN useradd -ms /bin/bash — no-user-group -g $WWWGROUP -u 1337 sail`
 
-## Code of Conduct
+add these lines…
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```
+RUN mkdir -p /etc/swoole/ssl/certs/ /etc/swoole/ssl/private/
+RUN openssl req -x509 -nodes -days 365 -subj "/C=CA/ST=QC/O=Artisan, Inc./CN=localhost" \
+    -addext "subjectAltName=DNS:localhost" -newkey rsa:2048 \
+    -keyout /etc/swoole/ssl/private/sail-selfsigned.key \
+    -out /etc/swoole/ssl/certs/sail-selfsigned.crt;
+RUN chmod 644 /etc/swoole/ssl/certs/*.crt
+RUN chown -R root:sail /etc/swoole/ssl/private/
+RUN chmod 640 /etc/swoole/ssl/private/*.key
+```
 
-## Security Vulnerabilities
+```bash
+sail build --no-cache
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+sail artisan octane:status
+```
